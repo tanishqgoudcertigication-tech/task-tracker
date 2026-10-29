@@ -1,0 +1,491 @@
+@import "tailwindcss";
+
+:root {
+  --background: #14171B;
+  --foreground: #D9DEE5;
+  --card-bg: #1C1F24;
+  --border-color: #2F353D;
+  --font-serif: var(--font-cormorant), Georgia, serif;
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-serif: var(--font-cormorant), Georgia, serif;
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+  background-color: #14171B;
+  color: #D9DEE5;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+/* Custom dark scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #14171B;
+}
+::-webkit-scrollbar-thumb {
+  background: #2F353D;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #4A5058;
+}
+
+/* Animations */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideUpModal {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes slideInToast {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes floatArch {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-fade-up-1 {
+  animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.05s backwards;
+}
+
+.animate-fade-up-2 {
+  animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.12s backwards;
+}
+
+.animate-fade-up-3 {
+  animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.2s backwards;
+}
+
+.animate-arch-in {
+  animation: fadeInScale 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.1s backwards;
+}
+
+.animate-float-slow {
+  animation: floatArch 8s ease-in-out infinite;
+}
+
+.animate-modal-in {
+  animation: slideUpModal 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-toast-in {
+  animation: slideInToast 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes cardRedGlowPulse {
+  0%, 100% {
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 16px rgba(255, 59, 48, 0.12);
+  }
+  50% {
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 32px rgba(255, 59, 48, 0.35);
+  }
+}
+
+.animate-card-red-glow {
+  animation: cardRedGlowPulse 2s ease-in-out infinite;
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up-1,
+  .animate-fade-up-2,
+  .animate-fade-up-3,
+  .animate-arch-in,
+  .animate-float-slow,
+  .animate-modal-in,
+  .animate-toast-in,
+  .animate-card-red-glow {
+    animation: none !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* ------------------------------------------------------------- */
+/* 2D Task Tracker Intro Animations */
+/* ------------------------------------------------------------- */
+
+@keyframes introTitleFadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes introMedallionPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.65);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes introOrbitLoop {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes introTaskSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes introCheckFill {
+  0% {
+    background-color: transparent;
+    border-color: #2A3038;
+    color: transparent;
+    transform: scale(0.8);
+  }
+  60% {
+    transform: scale(1.15);
+  }
+  100% {
+    background-color: #34D399;
+    border-color: #34D399;
+    color: #0F1215;
+    transform: scale(1);
+  }
+}
+
+@keyframes introProofSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes introApprovedPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes introCellGreenFill {
+  0% {
+    background-color: #252A31;
+    transform: scale(0.7);
+  }
+  60% {
+    transform: scale(1.2);
+  }
+  100% {
+    background-color: #34D399;
+    transform: scale(1);
+  }
+}
+
+@keyframes introTodayRedPulse {
+  0% {
+    background-color: #252A31;
+    transform: scale(0.7);
+    box-shadow: none;
+  }
+  40% {
+    background-color: #FF3B30;
+    transform: scale(1.35);
+    box-shadow: 0 0 16px #FF3B30;
+  }
+  70% {
+    background-color: #FF3B30;
+    transform: scale(1.0);
+    box-shadow: 0 0 6px #FF3B30;
+  }
+  100% {
+    background-color: #FF3B30;
+    transform: scale(1.0);
+    box-shadow: 0 0 8px rgba(255, 59, 48, 0.7);
+  }
+}
+
+@keyframes introRedPulseAmbient {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 6px rgba(255, 59, 48, 0.6);
+  }
+  50% {
+    transform: scale(1.2);
+    box-shadow: 0 0 14px rgba(255, 59, 48, 0.9);
+  }
+}
+
+@keyframes introLoginSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(28px);
+    pointer-events: none;
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+}
+
+/* Desktop animation classes */
+.scene-animated .intro-title-block {
+  animation: introTitleFadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.0s forwards;
+}
+
+.scene-animated .intro-medallion {
+  animation: introMedallionPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s forwards;
+  opacity: 0;
+}
+
+.scene-animated .intro-task-1 {
+  animation: introTaskSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) 1.0s forwards;
+  opacity: 0;
+}
+.scene-animated .intro-check-1 {
+  animation: introCheckFill 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 1.4s forwards;
+}
+
+.scene-animated .intro-task-2 {
+  animation: introTaskSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) 1.5s forwards;
+  opacity: 0;
+}
+.scene-animated .intro-check-2 {
+  animation: introCheckFill 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 1.9s forwards;
+}
+
+.scene-animated .intro-task-3 {
+  animation: introTaskSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) 2.0s forwards;
+  opacity: 0;
+}
+.scene-animated .intro-check-3 {
+  animation: introCheckFill 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 2.4s forwards;
+}
+
+.scene-animated .intro-proof-card {
+  animation: introProofSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) 2.6s forwards;
+  opacity: 0;
+}
+.scene-animated .intro-approved-badge {
+  animation: introApprovedPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 2.8s forwards;
+  opacity: 0;
+}
+
+.scene-animated .intro-streak-cell {
+  animation: introCellGreenFill 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) calc(2.8s + var(--cell-idx) * 0.075s) forwards;
+}
+
+.scene-animated .intro-today-cell {
+  animation: introTodayRedPulse 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 4.25s forwards,
+             introRedPulseAmbient 2s ease-in-out 4.65s infinite;
+}
+
+.scene-animated .intro-login-card {
+  animation: introLoginSlideIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 3.6s forwards;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Orbit continuous loop */
+.intro-orbit-ring {
+  animation: introOrbitLoop 10s linear infinite;
+}
+
+/* Settled state (skip or repeat visit): all elements visible immediately */
+.scene-settled .intro-title-block,
+.scene-settled .intro-medallion,
+.scene-settled .intro-task-card,
+.scene-settled .intro-proof-card,
+.scene-settled .intro-approved-badge,
+.scene-settled .intro-login-card {
+  opacity: 1 !important;
+  transform: none !important;
+  pointer-events: auto !important;
+  animation: none !important;
+}
+
+.scene-settled .intro-check {
+  background-color: #34D399 !important;
+  border-color: #34D399 !important;
+  color: #0F1215 !important;
+  animation: none !important;
+}
+
+.scene-settled .intro-streak-cell {
+  background-color: #34D399 !important;
+  animation: none !important;
+}
+
+.scene-settled .intro-today-cell {
+  background-color: #FF3B30 !important;
+  box-shadow: 0 0 8px rgba(255, 59, 48, 0.7) !important;
+  animation: introRedPulseAmbient 2s ease-in-out infinite !important;
+}
+
+.scene-settled .intro-orbit-ring {
+  animation: introOrbitLoop 10s linear infinite !important;
+}
+
+/* Mobile responsive animations (shortened to 3s) */
+@media (max-width: 767px) {
+  .scene-animated .intro-title-block {
+    animation-duration: 0.4s;
+    animation-delay: 0.0s;
+  }
+  .scene-animated .intro-medallion {
+    animation-duration: 0.35s;
+    animation-delay: 0.2s;
+  }
+  .scene-animated .intro-task-1 {
+    animation-duration: 0.3s;
+    animation-delay: 0.5s;
+  }
+  .scene-animated .intro-check-1 {
+    animation-delay: 0.75s;
+  }
+  .scene-animated .intro-task-2 {
+    animation-duration: 0.3s;
+    animation-delay: 0.8s;
+  }
+  .scene-animated .intro-check-2 {
+    animation-delay: 1.05s;
+  }
+  .scene-animated .intro-task-3 {
+    animation-duration: 0.3s;
+    animation-delay: 1.1s;
+  }
+  .scene-animated .intro-check-3 {
+    animation-delay: 1.35s;
+  }
+  .scene-animated .intro-proof-card {
+    animation-duration: 0.3s;
+    animation-delay: 1.5s;
+  }
+  .scene-animated .intro-approved-badge {
+    animation-delay: 1.65s;
+  }
+  .scene-animated .intro-streak-cell {
+    animation-delay: calc(1.7s + var(--cell-idx) * 0.045s);
+  }
+  .scene-animated .intro-today-cell {
+    animation: introTodayRedPulse 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 2.6s forwards,
+               introRedPulseAmbient 2s ease-in-out 2.9s infinite;
+  }
+  .scene-animated .intro-login-card {
+    animation-duration: 0.6s;
+    animation-delay: 2.2s;
+  }
+}
+
+/* Prefers reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .intro-title-block,
+  .intro-medallion,
+  .intro-task-card,
+  .intro-proof-card,
+  .intro-approved-badge,
+  .intro-login-card,
+  .intro-orbit-ring {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    pointer-events: auto !important;
+  }
+  .intro-check {
+    background-color: #34D399 !important;
+    border-color: #34D399 !important;
+    color: #0F1215 !important;
+  }
+  .intro-streak-cell {
+    background-color: #34D399 !important;
+  }
+  .intro-today-cell {
+    background-color: #FF3B30 !important;
+  }
+}
