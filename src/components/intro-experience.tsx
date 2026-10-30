@@ -475,8 +475,9 @@ export function IntroExperience({ mode = 'intro' }: IntroExperienceProps) {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-[#8B94A1] hover:text-[#E6EAF0] transition-colors cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-[#8B94A1] hover:text-[#E6EAF0] focus:outline-none transition-colors cursor-pointer z-10"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  title={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? (
                     <svg
