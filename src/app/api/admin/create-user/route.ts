@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
       user_metadata: {
         name: trimmedName || trimmedEmail,
         role: 'teammate',
+        initial_password: password,
       },
     });
 

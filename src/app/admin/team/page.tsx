@@ -12,8 +12,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { supabase, Profile } from '@/lib/supabase';
 
+interface TeammateItem extends Profile {
+  password?: string | null;
+}
+
 function TeamManagementContent() {
-  const [teammates, setTeammates] = useState<Profile[]>([]);
+  const [teammates, setTeammates] = useState<TeammateItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -30,20 +34,50 @@ function TeamManagementContent() {
   const [createSuccess, setCreateSuccess] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
 
+  // Password visibility state in list
+  const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({});
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Set / Change password modal state
+  const [passwordModalTeammate, setPasswordModalTeammate] = useState<TeammateItem | null>(null);
+  const [newTeammatePassword, setNewTeammatePassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordModalError, setPasswordModalError] = useState<string | null>(null);
+
   // Remove confirmation modal state
-  const [teammateToDelete, setTeammateToDelete] = useState<Profile | null>(null);
+  const [teammateToDelete, setTeammateToDelete] = useState<TeammateItem | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Refresh trigger
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Fetch teammates
+  // Fetch teammates with their recorded passwords via admin endpoint
   useEffect(() => {
     let ignore = false;
 
     async function loadTeammates() {
       try {
+        const token = (await supabase.auth.getSession()).data.session?.access_token;
+        if (token) {
+          const res = await fetch('/api/admin/teammates', {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          if (res.ok) {
+            const json = await res.json();
+            if (!ignore && Array.isArray(json.teammates)) {
+              setTeammates(json.teammates);
+              setFetchError(null);
+              setLoading(false);
+              return;
+            }
+          }
+        }
+
+        // Fallback to direct supabase profiles query if API call fails
         const { data, error } = await supabase
           .from('profiles')
           .select('id, name, email, role')
@@ -101,6 +135,22 @@ function TeamManagementContent() {
         (tm.email && tm.email.toLowerCase().includes(q))
     );
   }, [teammates, searchQuery]);
+
+  // Toggle reveal password for a teammate in the list
+  const toggleRevealPassword = (id: string) => {
+    setRevealedPasswords((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  // Copy password to clipboard with temporary feedback
+  const handleCopyPassword = async (id: string, pwd: string) => {
+    try {
+      await navigator.clipboard.writeText(pwd);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      // ignore
+    }
+  };
 
   // Create teammate form submission
   const handleCreateTeammate = async (e: React.FormEvent) => {
@@ -162,6 +212,57 @@ function TeamManagementContent() {
       setCreateError(msg);
     } finally {
       setCreating(false);
+    }
+  };
+
+  // Set / Change teammate password
+  const handleSaveTeammatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordModalTeammate) return;
+
+    if (!newTeammatePassword || newTeammatePassword.length < 6) {
+      setPasswordModalError('Password must be at least 6 characters.');
+      return;
+    }
+
+    setSavingPassword(true);
+    setPasswordModalError(null);
+
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) {
+        setPasswordModalError('Your session expired. Log in again.');
+        return;
+      }
+
+      const res = await fetch('/api/admin/teammates', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId: passwordModalTeammate.id,
+          password: newTeammatePassword,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPasswordModalError(data?.error || 'Failed to update password.');
+        return;
+      }
+
+      const updatedId = passwordModalTeammate.id;
+      setRevealedPasswords((prev) => ({ ...prev, [updatedId]: true }));
+      setCreateSuccess(`Password for "${passwordModalTeammate.name || passwordModalTeammate.email}" updated successfully!`);
+      setPasswordModalTeammate(null);
+      setRefreshKey((k) => k + 1);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to update password.';
+      setPasswordModalError(msg);
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -371,13 +472,15 @@ function TeamManagementContent() {
                     <tr>
                       <th className="p-3.5 min-w-[180px]">Name</th>
                       <th className="p-3.5">Email Address</th>
-                      <th className="p-3.5 min-w-[100px]">Role</th>
-                      <th className="p-3.5 text-right min-w-[100px]">Actions</th>
+                      <th className="p-3.5 min-w-[170px]">Password</th>
+                      <th className="p-3.5 min-w-[90px]">Role</th>
+                      <th className="p-3.5 text-right min-w-[90px]">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#2F353D]">
                     {filteredTeammates.map((tm) => {
                       const initial = (tm.name || tm.email || '?').charAt(0).toUpperCase();
+                      const isRevealed = !!revealedPasswords[tm.id];
 
                       return (
                         <tr key={tm.id} className="hover:bg-[#252A31]/40 transition-colors">
@@ -393,6 +496,79 @@ function TeamManagementContent() {
                           </td>
                           <td className="p-3.5 font-mono text-[11px] text-[#9AA3AE]">
                             {tm.email || '—'}
+                          </td>
+                          <td className="p-3.5">
+                            {tm.password ? (
+                              <div className="inline-flex items-center gap-1.5 bg-[#1C1F24] border border-[#2F353D] rounded-lg px-2.5 py-1">
+                                <span className="font-mono text-xs text-[#D9DEE5] tracking-wider select-all">
+                                  {isRevealed ? tm.password : '••••••••'}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleRevealPassword(tm.id)}
+                                  className="p-1 rounded text-[#9AA3AE] hover:text-[#D9DEE5] transition-colors cursor-pointer"
+                                  aria-label={isRevealed ? 'Hide password' : 'Show password'}
+                                  title={isRevealed ? 'Hide password' : 'Show password'}
+                                >
+                                  {isRevealed ? (
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                                    </svg>
+                                  ) : (
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyPassword(tm.id, tm.password!)}
+                                  className="p-1 rounded text-[#9AA3AE] hover:text-[#D9DEE5] transition-colors cursor-pointer"
+                                  aria-label="Copy password"
+                                  title="Copy password"
+                                >
+                                  {copiedId === tm.id ? (
+                                    <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  ) : (
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    </svg>
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPasswordModalTeammate(tm);
+                                    setNewTeammatePassword('');
+                                    setShowNewPassword(false);
+                                    setPasswordModalError(null);
+                                  }}
+                                  className="p-1 rounded text-[#9AA3AE] hover:text-[#FF3B30] transition-colors cursor-pointer"
+                                  title="Change password"
+                                  aria-label="Change password"
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                  </svg>
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPasswordModalTeammate(tm);
+                                  setNewTeammatePassword('');
+                                  setShowNewPassword(false);
+                                  setPasswordModalError(null);
+                                }}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium text-[#FF5A4F] bg-[#FF3B30]/10 hover:bg-[#FF3B30]/20 border border-[#FF3B30]/30 transition-all cursor-pointer"
+                              >
+                                <span>Set Password</span>
+                              </button>
+                            )}
                           </td>
                           <td className="p-3.5">
                             <Badge status="teammate" />
@@ -417,6 +593,7 @@ function TeamManagementContent() {
               <div className="sm:hidden space-y-3">
                 {filteredTeammates.map((tm) => {
                   const initial = (tm.name || tm.email || '?').charAt(0).toUpperCase();
+                  const isRevealed = !!revealedPasswords[tm.id];
 
                   return (
                     <div
@@ -437,6 +614,79 @@ function TeamManagementContent() {
 
                       <p className="font-mono text-xs text-[#9AA3AE] pl-10.5">{tm.email}</p>
 
+                      {/* Mobile Password Row */}
+                      <div className="flex items-center justify-between text-xs py-2 px-3 rounded-lg bg-[#1C1F24] border border-[#2F353D]">
+                        <span className="text-[11px] text-[#9AA3AE]">Password</span>
+                        {tm.password ? (
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs text-[#D9DEE5] tracking-wider select-all">
+                              {isRevealed ? tm.password : '••••••••'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => toggleRevealPassword(tm.id)}
+                              className="p-1 text-[#9AA3AE] hover:text-[#D9DEE5]"
+                              aria-label={isRevealed ? 'Hide password' : 'Show password'}
+                            >
+                              {isRevealed ? (
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                                </svg>
+                              ) : (
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyPassword(tm.id, tm.password!)}
+                              className="p-1 text-[#9AA3AE] hover:text-[#D9DEE5]"
+                              aria-label="Copy password"
+                            >
+                              {copiedId === tm.id ? (
+                                <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                              ) : (
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPasswordModalTeammate(tm);
+                                setNewTeammatePassword('');
+                                setShowNewPassword(false);
+                                setPasswordModalError(null);
+                              }}
+                              className="p-1 text-[#9AA3AE] hover:text-[#FF3B30]"
+                              aria-label="Change password"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                              </svg>
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPasswordModalTeammate(tm);
+                              setNewTeammatePassword('');
+                              setShowNewPassword(false);
+                              setPasswordModalError(null);
+                            }}
+                            className="text-[11px] font-medium text-[#FF5A4F] hover:underline cursor-pointer"
+                          >
+                            Set Password
+                          </button>
+                        )}
+                      </div>
+
                       <div className="pt-2 flex justify-end border-t border-[#2F353D]">
                         <Button
                           variant="danger"
@@ -453,6 +703,80 @@ function TeamManagementContent() {
             </>
           )}
         </Card>
+
+        {/* Set / Change Password Modal */}
+        <Modal
+          isOpen={!!passwordModalTeammate}
+          onClose={() => setPasswordModalTeammate(null)}
+          eyebrow="CREDENTIAL UPDATE"
+          title="Teammate Password"
+          maxWidth="max-w-md"
+        >
+          {passwordModalTeammate && (
+            <form onSubmit={handleSaveTeammatePassword} className="space-y-4">
+              <p className="text-xs text-[#9AA3AE] leading-relaxed">
+                Update or set a new password for <strong className="text-[#D9DEE5] font-semibold">{passwordModalTeammate.name || passwordModalTeammate.email}</strong>. This updates their login access and stores the password securely for admin visibility.
+              </p>
+
+              {passwordModalError && <Toast type="error" message={passwordModalError} />}
+
+              <div>
+                <label htmlFor="modal-new-pwd" className="block text-xs font-medium text-[#9AA3AE] mb-1.5">
+                  New Password *
+                </label>
+                <div className="relative">
+                  <input
+                    id="modal-new-pwd"
+                    type={showNewPassword ? 'text' : 'password'}
+                    required
+                    placeholder="Min 6 characters"
+                    value={newTeammatePassword}
+                    onChange={(e) => setNewTeammatePassword(e.target.value)}
+                    className="w-full min-h-[44px] rounded-xl border border-[#2F353D] bg-[#252A31] px-3.5 py-2.5 pr-10 text-xs text-[#D9DEE5] placeholder-[#9AA3AE]/40 focus:border-[#FF3B30] focus:ring-1 focus:ring-[#FF3B30] focus:outline-none transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword((prev) => !prev)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-[#9AA3AE] hover:text-[#D9DEE5] focus:outline-none transition-colors cursor-pointer z-10"
+                    aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                    title={showNewPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showNewPassword ? (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  type="button"
+                  onClick={() => setPasswordModalTeammate(null)}
+                  disabled={savingPassword}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  type="submit"
+                  loading={savingPassword}
+                >
+                  Save Password
+                </Button>
+              </div>
+            </form>
+          )}
+        </Modal>
 
         {/* Delete Confirmation Modal */}
         <Modal
